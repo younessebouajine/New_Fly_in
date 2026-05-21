@@ -60,7 +60,7 @@ class PathFinder:
         """Return movement cost based on zone type"""
 
         if zone.zone_type == "priority":
-            return 0.2
+            return 0.8
 
         if zone.zone_type == "normal":
             return 1
@@ -183,6 +183,7 @@ class PathFinder:
             paths.append(path)
 
             for zone in path[1:-1]:
-                penalties[zone.name] = penalties.get(zone.name, 0) + 1
+                penalties[zone.name] = penalties.get(zone.name, 0) + 4
 
         return paths
+

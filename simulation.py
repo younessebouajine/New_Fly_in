@@ -1,7 +1,8 @@
 from pathfinding import PathFinder
 from models import MapData, Drone, Zone, Connection
 from typing import List
-
+from rich import print
+from colors import Colorizer
 
 
 class Simulation:
@@ -12,13 +13,15 @@ class Simulation:
         self.drones: List[Drone] = []
         self.current_turn = 0
 
+        self.colorizer = Colorizer()
+
         self.create_drones()
         self.assign_paths()
 
     def create_drones(self) -> None:
 
         start_zone = self.map_data.start_zone
-
+        
         for i in range(self.map_data.nb_drones):
 
             drone = Drone(
@@ -54,8 +57,110 @@ class Simulation:
 
         print("\n=== SIMULATION FINISHED ===")
 
-    def move_drones(self) -> None:
+    # def move_drones(self) -> None:
 
+    #     turn_movements = []
+
+    #     reserved_zones = set()
+
+    #     for drone in self.drones:
+
+    #         # already arrived
+    #         if drone.current_zone == self.map_data.end_zone:
+    #             continue
+
+    #         # safety
+    #         if drone.path_index >= len(drone.path) - 1:
+    #             continue
+
+    #         next_zone = drone.path[drone.path_index + 1]
+
+    #         # drone still flying to restricted zone
+    #         if drone.turns_remaining > 0:
+
+    #             drone.turns_remaining -= 1
+
+    #             if drone.turns_remaining == 0:
+
+    #                 next_zone.drones.append(drone)
+
+    #                 drone.current_zone = next_zone
+
+    #                 drone.path_index += 1
+
+    #                 turn_movements.append(
+    #                     f"D{drone.drone_id}-{next_zone.name}"
+    #                 )
+
+    #             continue
+
+    #         # blocked zone
+    #         if next_zone.zone_type == "blocked":
+    #             continue
+
+    #         # reservation fix
+    #         if (
+    #             next_zone.name in reserved_zones
+    #             and next_zone != self.map_data.end_zone
+    #         ):
+    #             continue
+
+    #         # capacity
+    #         if (
+    #             next_zone != self.map_data.end_zone
+    #             and next_zone.is_full()
+    #         ):
+    #             continue
+
+    #         connection = self.give_us_connection(
+    #             drone.current_zone,
+    #             next_zone
+    #         )
+
+    #         if connection is None:
+    #             continue
+
+    #         # connection capacity
+    #         if connection.current_transit >= connection.max_link_capacity:
+    #             continue
+
+    #         old_zone = drone.current_zone
+
+    #         old_zone.drones.remove(drone)
+
+    #         connection.current_transit += 1
+
+    #         # restricted zone
+    #         if next_zone.zone_type == "restricted":
+
+    #             drone.turns_remaining = 1
+
+    #             turn_movements.append(
+    #                 f"D{drone.drone_id}-"
+    #                 f"{old_zone.name}-{next_zone.name}"
+    #             )
+
+    #         else:
+
+    #             next_zone.drones.append(drone)
+
+    #             drone.current_zone = next_zone
+
+    #             drone.path_index += 1
+
+    #             turn_movements.append(
+    #                 f"D{drone.drone_id}-{next_zone.name}"
+    #             )
+
+    #             if next_zone != self.map_data.end_zone:
+    #                 reserved_zones.add(next_zone.name)
+
+    #     if turn_movements:
+    #         print(" ".join(turn_movements))
+
+
+    def move_drones(self) -> None:
+    
         turn_movements = []
 
         reserved_zones = set()
@@ -86,7 +191,8 @@ class Simulation:
                     drone.path_index += 1
 
                     turn_movements.append(
-                        f"D{drone.drone_id}-{next_zone.name}"
+                        f"{self.colorizer.color(f'D{drone.drone_id}', 'cyan')}-"
+                        f"{self.colorizer.color(next_zone.name, next_zone.color)}"
                     )
 
                 continue
@@ -133,8 +239,9 @@ class Simulation:
                 drone.turns_remaining = 1
 
                 turn_movements.append(
-                    f"D{drone.drone_id}-"
-                    f"{old_zone.name}-{next_zone.name}"
+                    f"{self.colorizer.color(f'D{drone.drone_id}', 'cyan')}-"
+                    f"{self.colorizer.color(old_zone.name, old_zone.color)}->"
+                    f"{self.colorizer.color(next_zone.name, next_zone.color)}"
                 )
 
             else:
@@ -146,7 +253,8 @@ class Simulation:
                 drone.path_index += 1
 
                 turn_movements.append(
-                    f"D{drone.drone_id}-{next_zone.name}"
+                    f"{self.colorizer.color(f'D{drone.drone_id}', 'cyan')}-"
+                    f"{self.colorizer.color(next_zone.name, next_zone.color)}"
                 )
 
                 if next_zone != self.map_data.end_zone:
@@ -181,3 +289,4 @@ class Simulation:
                 return False
 
         return True
+

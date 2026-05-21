@@ -5,9 +5,10 @@ from rich import print
 class Colorizer:
     """
     Handle terminal colors for zones and drones.
+
     Supports:
     - rainbow text
-    - normal named colors
+    - css named colors
     - hex colors
     """
 
@@ -32,33 +33,84 @@ class Colorizer:
         result = ""
 
         for i, char in enumerate(text):
-            color = self.rainbow_colors[i % len(self.rainbow_colors)]
+
+            color = self.rainbow_colors[
+                i % len(self.rainbow_colors)
+            ]
+
             hex_color = name_to_hex(color)
-            result += f"[{hex_color}]{char}[/]"
+
+            result += (
+                f"[{hex_color}]"
+                f"{char}"
+                f"[/]"
+            )
 
         return result
 
-    def color(self, text: str, color: str | None) -> str:
+    def color(
+        self,
+        text: str,
+        color: str | None
+    ) -> str:
         """
         Color text using:
         - rainbow
-        - css color name
-        - hex
+        - css color names
+        - hex colors
         """
 
         if color is None:
             return text
 
+        # rainbow mode
         if color == "rainbow":
             return self.rainbow(text)
 
-        # if already hex
+        # already hex
         if color.startswith("#"):
-            return f"[{color}]{text}[/]"
+            return (
+                f"[{color}]"
+                f"{text}"
+                f"[/]"
+            )
 
-        # css name → hex
+        # named css color
         try:
+
             hex_color = name_to_hex(color)
-            return f"[{hex_color}]{text}[/]"
+
+            return (
+                f"[{hex_color}]"
+                f"{text}"
+                f"[/]"
+            )
+
         except Exception:
             return text
+
+    def drone_and_zone(
+        self,
+        drone_id: int,
+        zone_name: str,
+        zone_color: str | None
+    ) -> str:
+        """
+        Example:
+        D1-start_hub
+
+        - drone always cyan
+        - zone uses its own color
+        """
+
+        drone_text = self.color(
+            f"D{drone_id}",
+            "cyan"
+        )
+
+        zone_text = self.color(
+            zone_name,
+            zone_color
+        )
+
+        return f"{drone_text}-{zone_text}"

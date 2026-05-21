@@ -32,7 +32,6 @@ class Connection:
             or
             (self.zoneA.name == zone2 and self.zoneB.name == zone1)
         )
-        # {self.zoneA.name, self.zoneB.name} == {zone1, zone2}
 
 
 class Drone:

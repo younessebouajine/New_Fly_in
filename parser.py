@@ -67,7 +67,6 @@ class Parser:
 
         if lower_line.startswith("nb_drones:"):
             self.parse_nb_drones(line, nu_line)
-
         elif lower_line.startswith("start_hub:") or \
                 lower_line.startswith("hub:") or \
                 lower_line.startswith("end_hub:"):
@@ -112,7 +111,7 @@ class Parser:
             ParseError: if the color is invalid
         """
 
-        if color is None:
+        if (color is None or color.lower() == "none"):
             return DEFAULT_COLOR
 
         color = color.strip()

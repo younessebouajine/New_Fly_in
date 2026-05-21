@@ -33,5 +33,5 @@ if __name__ == "__main__":
     try:
         main()
 
-    except Exception as error:
+    except (BaseException, KeyboardInterrupt, FileNotFoundError) as error:
         print(f"\nERROR: {error}\n")

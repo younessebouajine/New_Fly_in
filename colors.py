@@ -1,5 +1,4 @@
 from webcolors import name_to_hex
-from rich import print
 
 
 class Colorizer:
@@ -60,7 +59,10 @@ class Colorizer:
         - hex colors
         """
 
-        if color is None:
+        if (
+            color is None
+            or color.lower() == "none"
+        ):
             return text
 
         # rainbow mode

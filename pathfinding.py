@@ -4,7 +4,13 @@ from models import Zone, MapData
 
 
 class PathFinder:
+    """
+    A multi-agent pathfinding coordinator that uses a penalized Dijkstra
+    algorithm to calculate distinct,
+    low-cost routing paths for a fleet of drones.
+    """
     def __init__(self, map_data: MapData) -> None:
+        """Initializes the pathfinder with map and fleet configuration data."""
         self.map_data = map_data
 
     def get_move_cost(self, zone: Zone) -> float:
@@ -71,6 +77,10 @@ class PathFinder:
         return path
 
     def find_all_paths(self) -> List[List[Zone]]:
+        """
+        Finds unique paths for multiple drones from the start to end zone,
+        applying cost penalties to shared zones to encourage distinct routes.
+        """
         start = self.map_data.start_zone
         end = self.map_data.end_zone
         penalties: dict[str, float] = {}
@@ -87,5 +97,7 @@ class PathFinder:
                 penalties[zone.name] = penalties.get(zone.name, 0) + 4
         if len(paths) == 1:
             return paths
-        paths.sort(key=lambda path: sum([self.get_move_cost(zone) for zone in path]))
+        paths.sort(
+            key=lambda path: sum([self.get_move_cost(zone) for zone in path])
+            )
         return paths[0:2]

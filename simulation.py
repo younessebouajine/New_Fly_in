@@ -6,19 +6,39 @@ from colors import Colorizer
 
 
 class Simulation:
+    """
+    The engine that manages running and animating
+    the drone movements turn by turn.
+
+    It deploys the drone fleet, tracks travel schedules,
+    applies traffic constraints
+    like capacity bottlenecks or delays in restricted areas,
+    and visually logs progress.
+    """
     def __init__(self, map_data: MapData):
+        """
+        Sets up the orchestration variables and pre-calculates target
+        paths for the fleet.
+
+        Args:
+            map_data (MapData): Structured application map setup configuration.
+        """
         self.map_data = map_data
         self.pathfinder = PathFinder(map_data)
 
         self.drones: List[Drone] = []
         self.current_turn = 0
 
-        self.colorizer = Colorizer()
+        self.colore = Colorizer()
 
         self.create_drones()
         self.assign_paths()
 
     def create_drones(self) -> None:
+        """
+        Generates individual drone data objects and houses them
+        inside the initial hub.
+        """
         start_zone = self.map_data.start_zone
         for i in range(self.map_data.nb_drones):
             drone = Drone(
@@ -29,11 +49,19 @@ class Simulation:
             start_zone.drones.append(drone)
 
     def assign_paths(self) -> None:
+        """
+        Distributes pre-calculated distinct routing tracks evenly
+        across the active fleet.
+        """
         all_paths = self.pathfinder.find_all_paths()
         for drone in self.drones:
             drone.path = all_paths[self.drones.index(drone) % len(all_paths)]
 
     def run(self) -> None:
+        """
+        Starts the central operational loop,
+        ticking step clocks forward until everyone lands.
+        """
         print("\n=== SIMULATION START ===\n")
         while not self.all_drones_arrived():
             self.current_turn += 1
@@ -44,6 +72,14 @@ class Simulation:
         print("\n=== SIMULATION FINISHED ===")
 
     def move_drones(self) -> None:
+        """
+        Executes single-turn tick logic calculations governing lane
+        speeds and grid spacing.
+
+        It checks traffic limits, processes delay timers inside restricted
+        airspace zones,
+        and prints terminal logs showing active vehicle placements.
+        """
         turn_movements = []
         reserved_zones = set()
         for drone in self.drones:
@@ -62,8 +98,8 @@ class Simulation:
                     drone.current_zone = next_zone
                     drone.path_index += 1
                     turn_movements.append(
-                        f"{self.colorizer.color(f'D{drone.drone_id}', 'cyan')}-"
-                        f"{self.colorizer.color(next_zone.name, next_zone.color)}"
+                        f"{self.colore.color(f'D{drone.drone_id}', 'cyan')}-"
+                        f"{self.colore.color(next_zone.name, next_zone.color)}"
                     )
                 continue
             # blocked zone
@@ -106,9 +142,9 @@ class Simulation:
                 drone.turns_remaining = 1
 
                 turn_movements.append(
-                    f"{self.colorizer.color(f'D{drone.drone_id}', 'cyan')}-"
-                    f"{self.colorizer.color(old_zone.name, old_zone.color)}->"
-                    f"{self.colorizer.color(next_zone.name, next_zone.color)}"
+                    f"{self.colore.color(f'D{drone.drone_id}', 'cyan')}-"
+                    f"{self.colore.color(old_zone.name, old_zone.color)}->"
+                    f"{self.colore.color(next_zone.name, next_zone.color)}"
                 )
 
             else:
@@ -120,8 +156,8 @@ class Simulation:
                 drone.path_index += 1
 
                 turn_movements.append(
-                    f"{self.colorizer.color(f'D{drone.drone_id}', 'cyan')}-"
-                    f"{self.colorizer.color(next_zone.name, next_zone.color)}"
+                    f"{self.colore.color(f'D{drone.drone_id}', 'cyan')}-"
+                    f"{self.colore.color(next_zone.name, next_zone.color)}"
                 )
 
                 if next_zone != self.map_data.end_zone:
@@ -135,6 +171,18 @@ class Simulation:
         zone_a: Zone,
         zone_b: Zone
     ) -> Connection | None:
+        """
+        Locates the shared bridge connection object
+        connecting two layout points together.
+
+        Args:
+            zone_a (Zone): The current physical zone node.
+            zone_b (Zone): The neighboring destination node.
+
+        Returns:
+            Connection | None: The connection structural data,
+            or None if no link exists.
+        """
 
         for connection in self.map_data.connections:
 
@@ -144,11 +192,22 @@ class Simulation:
         return None
 
     def reset_connections(self) -> None:
+        """
+        Clears out transient bottleneck trackers to
+        reset path capabilities for the next step.
+        """
 
         for connection in self.map_data.connections:
             connection.current_transit = 0
 
     def all_drones_arrived(self) -> bool:
+        """
+        Checks if every machine inside the simulation tracker
+        has safely hit its target.
+
+        Returns:
+            bool: True if the entire fleet has reached the finish line.
+        """
 
         for drone in self.drones:
 

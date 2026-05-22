@@ -3,12 +3,12 @@ from webcolors import name_to_hex
 
 class Colorizer:
     """
-    Handle terminal colors for zones and drones.
+    A class to add colors to text for terminal display
+    using the rich library format.
 
-    Supports:
-    - rainbow text
-    - css named colors
-    - hex colors
+    It supports turning text into a rainbow style,
+    using standard CSS color names,
+    or using custom Hex color codes.
     """
 
     rainbow_colors = [
@@ -22,11 +22,18 @@ class Colorizer:
     ]
 
     def __init__(self) -> None:
+        """Does nothing since this class does not need initial variables."""
         pass
 
     def rainbow(self, text: str) -> str:
         """
-        Return rainbow-colored text.
+        Colors each letter of a string with a different rainbow color.
+
+        Args:
+            text (str): The string of text to color.
+
+        Returns:
+            str: The text wrapped in rich library color tags.
         """
 
         result = ""
@@ -53,10 +60,18 @@ class Colorizer:
         color: str | None
     ) -> str:
         """
-        Color text using:
-        - rainbow
-        - css color names
-        - hex colors
+        Applies a specific color style to a string of text.
+
+        It automatically detects if the color should be rainbow, a hex code, 
+        or a standard CSS color name. If the color is missing or invalid, 
+        it returns the plain text without changes.
+
+        Args:
+            text (str): The string of text to color.
+            color (str | None): The color name, hex code, or 'rainbow'.
+
+        Returns:
+            str: The colored text string.
         """
 
         if (
@@ -98,11 +113,17 @@ class Colorizer:
         zone_color: str | None
     ) -> str:
         """
-        Example:
-        D1-start_hub
+        Formats and colors a string showing a drone inside a specific zone.
+        
+        Example output: [cyan]D1[/]-[#FF0000]start_hub[/]
 
-        - drone always cyan
-        - zone uses its own color
+        Args:
+            drone_id (int): The ID number of the drone (always colored cyan).
+            zone_name (str): The name of the hub or zone.
+            zone_color (str | None): The color code or name for the zone.
+
+        Returns:
+            str: A combined, colored text line showing 'D<id>-<zone_name>'.
         """
 
         drone_text = self.color(

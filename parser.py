@@ -5,6 +5,26 @@ from webcolors import name_to_hex
 
 
 class Parser:
+    """
+    A class to read and validate map configuration files for a drone system.
+
+    This parser reads a text file line by line to set up hubs, connections,
+    and drone settings while checking for any format errors.
+
+    Attributes:
+        nb_drones (int | None): The total number of drones allowed.
+        zones (dict): A dictionary of all hubs/zones found in the file.
+        connections (list): A list of dictionaries showing links between zones.
+        start_zone (str | None): The name of the starting hub.
+        end_zone (str | None): The name of the ending hub.
+        seen_edges (set): A set of already processed links to prevent
+            duplicates.
+
+    Example Usage:
+        parser = Parser()
+        parser.parse("map.txt")
+        map_data = parser.build_map_data()
+    """
 
     nb_drones_re = re.compile(
         r"^nb_drones\s*:\s*(\+?\d+)\s*$",
@@ -33,14 +53,35 @@ class Parser:
     )
 
     def __init__(self) -> None:
+        """
+        Initializes a new Parser instance with empty values.
+
+        Sets up the basic storage for drones, zones, connections, and
+        tracking systems to help validate the map data.
+        """
         self.nb_drones: int | None = None
         self.zones: dict[str, dict] = {}
-        self.connections: list[tuple[str, str, dict]] = []
+        self.connections: list[dict[str, Any]] = []
         self.start_zone: str | None = None
         self.end_zone: str | None = None
         self.seen_edges: set[tuple[str, str]] = set()
 
-    def parse(self, file_path: str):
+    def parse(self, file_path: str) -> None:
+        """
+        Opens and reads a map configuration file line by line.
+
+        It cleans each line, processes valid data lines, checks for errors,
+        and performs a final validation check on the entire file content.
+
+        Args:
+            file_path (str): The path or location of the text file to read.
+
+        Raises:
+            ValueError: If the file is completely empty or only contains
+                comments.
+            ParseError: If there is a format or validation error inside
+                the file.
+        """
         has_content = False
         with open(file_path, "r") as file:
             for line_number, line in enumerate(file, start=1):
@@ -54,12 +95,45 @@ class Parser:
         self.final_validate()
 
     def clean_line(self, line: str) -> str:
+        """
+        Removes spaces and comments from a line of text.
+
+        It strips empty spaces from the start and end of the line. If the
+        line contains a comment character (#), it cuts off the comment text
+        and returns only the useful data.
+
+        Args:
+            line (str): The raw line of text read from the file.
+
+        Returns:
+            str: The cleaned line of text, or an empty string if
+            the line is a comment or empty.
+        """
         line = line.strip()
         if not line or line.startswith("#"):
             return ""
         return line.split('#')[0].strip()
 
     def parse_line(self, line: str, nu_line: int) -> None:
+        """
+        Identifies what type of information a line contains
+        and sends it to the right handler.
+
+        It checks the start of the line to find if it configures
+        the drone count,
+        a zone/hub, or a connection path.
+        It also enforces the rule that the total 
+        number of drones must be set before reading any other map data.
+
+        Args:
+            line (str): The cleaned text line to process.
+            nu_line (int): The current line number in the file
+            (used for error messages).
+
+        Raises:
+            ParseError: If 'nb_drones' is not defined first,
+            or if the line has a format that cannot be recognized.
+        """
         lower_line = line.lower()
 
         if self.nb_drones is None and not lower_line.startswith("nb_drones"):
@@ -80,6 +154,20 @@ class Parser:
             raise ParseError(f"Error on line {nu_line}: unknown line format")
 
     def parse_nb_drones(self, line: str, nu_line: int) -> None:
+        """
+        Extracts and validates the total number of drones from a line.
+
+        It checks that the number is defined only once, matches the correct
+        format, and is a positive number greater than zero.
+
+        Args:
+            line (str): The text line containing the drone count data.
+            nu_line (int): The current line number for error reporting.
+
+        Raises:
+            ParseError: If the drone count is duplicated, has bad syntax,
+            or is not positive.
+        """
         if self.nb_drones is not None:
             raise ParseError(
                 f"Error on line {nu_line}: nb_drones is defined more than once"
@@ -128,14 +216,31 @@ class Parser:
 
         # Accept named CSS colors
         try:
-            return name_to_hex(color.lower())
+            return str(name_to_hex(color.lower()))
         except ValueError:
             raise ParseError(
                 f"Error on line {nu_line}: invalid color '{color}'"
             )
 
     def parse_zone_line(self, line: str, nu_line: int) -> None:
-        meta_data: dict[str, str] = {}
+        """
+        Reads and checks a hub or zone line from the text file.
+
+        It extracts the name, coordinates, type, color,
+        and maximum drone limits.
+        It also makes sure there are no duplicate names,
+        and that the start or end 
+        hubs are not completely blocked.
+
+        Args:
+            line (str): The text line that defines a zone or hub.
+            nu_line (int): The current line number for error reporting.
+
+        Raises:
+            ParseError: If syntax is wrong, a zone is duplicated, data values
+                        are invalid, or a start/end hub is set to blocked.
+        """
+        meta_data: dict[str, Any] = {}
         final_dict: dict[str, Any] = {}
 
         match = self.zone_re.match(line)
@@ -151,7 +256,7 @@ class Parser:
 
         if match.group(5) is not None:
             metadata_text = match.group(5)
-            meta_data = self.parse_metadata(metadata_text, nu_line, line)
+            meta_data = dict(self.parse_metadata(metadata_text, nu_line, line))
 
         if "zone" not in meta_data:
             meta_data["zone"] = "normal"
@@ -164,17 +269,21 @@ class Parser:
                 meta_data["max_drones"] = 1
 
         types_zone = {"normal", "blocked", "restricted", "priority"}
-        zone_type = meta_data.get("zone").lower()
+        zone_type = meta_data.get("zone", "normal").lower()
         if zone_type not in types_zone:
             raise ParseError(
                 f"Error on line {nu_line}: invalid zone type '{zone_type}'"
             )
 
         # Resolve color to hex (or keep 'rainbow'), fallback to DEFAULT_COLOR
-        color = self.resolve_color(meta_data.get("color"), nu_line)
+        color_value = meta_data.get("color")
+        if color_value is None:
+            color = "#AAAAAA"
+        else:
+            color = self.resolve_color(color_value, nu_line)
 
         try:
-            max_drones = int(meta_data.get("max_drones"))
+            max_drones = int(meta_data.get("max_drones", "0"))
         except (ValueError, TypeError):
             raise ParseError(
                 f"Error on line {nu_line}: max_drones must be a valid integer"
@@ -188,6 +297,8 @@ class Parser:
 
         if typezone in ("start_hub", "end_hub"):
             if max_drones != self.nb_drones:
+                if self.nb_drones is None:
+                    raise ValueError("nb_drones is not initialized")
                 max_drones = self.nb_drones
 
         if name in self.zones:
@@ -242,6 +353,26 @@ class Parser:
 
     def parse_metadata(self, metadata_text: str, nu_line: int,
                        line: str) -> dict[str, str]:
+        """
+        Reads and checks settings inside brackets like
+        [zone=priority color=red].
+
+        It makes sure the settings use the correct formatting and only contain
+        allowed keywords depending on whether the line is a zone or a
+        connection.
+
+        Args:
+            metadata_text (str): The raw text found inside the brackets.
+            nu_line (int): The current line number for error reporting.
+            line (str): The full text line to check if it is a hub or
+            connection.
+
+        Returns:
+            dict[str, str]: A dictionary of the parsed settings.
+
+        Raises:
+            ParseError: If the syntax is wrong or contains unallowed keywords.
+        """
         meta_data_dict: dict[str, str] = {}
 
         if not metadata_text:
@@ -282,6 +413,21 @@ class Parser:
         return meta_data_dict
 
     def parse_connection_line(self, line: str, nu_line: int) -> None:
+        """
+        Reads and checks a connection line linking two hubs together.
+
+        It extracts the names of the two zones and the maximum path capacity.
+        It ensures both zones exist, the path doesn't connect a zone to itself,
+        and that this identical path hasn't already been created.
+
+        Args:
+            line (str): The text line defining the path connection.
+            nu_line (int): The current line number for error reporting.
+
+        Raises:
+            ParseError: If syntax is invalid, a zone doesn't exist, the link
+                        connects to itself, or the connection is duplicated.
+        """
         meta_dict: dict[Any, Any] = {}
 
         match = self.connection_re.match(line)
@@ -300,7 +446,7 @@ class Parser:
             meta_dict["max_link_capacity"] = 1
 
         try:
-            max_link_capacity = int(meta_dict.get("max_link_capacity"))
+            max_link_capacity = int(meta_dict.get("max_link_capacity", "0"))
         except (ValueError, TypeError):
             raise ParseError(
                 f"Error on line {nu_line}: "
@@ -325,7 +471,7 @@ class Parser:
                 "connection cannot link a zone to itself"
             )
 
-        edge_key = tuple(sorted((zone1, zone2)))
+        edge_key = tuple(sorted((str(zone1), str(zone2))))
         if edge_key in self.seen_edges:
             raise ParseError(
                 f"Error on line {nu_line}: "
@@ -337,11 +483,24 @@ class Parser:
             "to": zone2,
             "max_link_capacity": max_link_capacity
         }
-
-        self.seen_edges.add(edge_key)
+        u, v = edge_key
+        self.seen_edges.add((u, v))
         self.connections.append(connection_dict)
 
     def final_validate(self) -> None:
+        """
+        Runs final security checks after reading the entire file.
+
+        It makes sure that the drone count, starting hub,
+        and ending hub are all
+        properly set. It also verifies that both
+        the start and end hubs are actually 
+        connected to at least one path so drones can travel.
+
+        Raises:
+            ParseError: If critical information is missing, or if the start and
+                        end hubs have no connection paths.
+        """
         if self.nb_drones is None:
             raise ParseError("nb_drones is not defined")
 
@@ -372,7 +531,16 @@ class Parser:
                 f"The end_hub '{self.end_zone}' has no connections."
             )
 
-    def build_map_data(self):
+    def build_map_data(self) -> dict:
+        """
+        Gathers all the checked map information into one clean dictionary.
+
+        This makes it easy to pass all the parsed data—like drones, zones,
+        connections, start, and end points—to other parts of your program.
+
+        Returns:
+            dict: A dictionary containing all the organized map data.
+        """
         return {
             "nb_drones": self.nb_drones,
             "zones": self.zones,

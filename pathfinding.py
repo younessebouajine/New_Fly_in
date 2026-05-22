@@ -5,28 +5,57 @@ from models import Zone, MapData
 
 class PathFinder:
     """
-    A multi-agent pathfinding coordinator that uses a penalized Dijkstra
-    algorithm to calculate distinct,
-    low-cost routing paths for a fleet of drones.
+    Calculates smart flight paths for the drones across the map.
+
+    It uses a modified Dijkstra algorithm that applies temporary cost penalties
+    to shared areas, encouraging multiple drones to choose distinct,
+    low-traffic 
+    routes instead of all jamming into the same path.
     """
     def __init__(self, map_data: MapData) -> None:
         """Initializes the pathfinder with map and fleet configuration data."""
         self.map_data = map_data
 
-    def get_move_cost(self, zone: Zone) -> float:
-        """Return movement cost based on zone type"""
+    def get_move_cost(self, zone: Zone) -> float | int:
+        """
+        Determines the base difficulty or travel time cost of entering a zone.
+
+        For example, priority zones have a lower cost to encourage traffic
+        there,
+        while restricted zones have a higher cost because they slow down
+        drones.
+
+        Args:
+            zone (Zone): The zone to calculate the movement cost for.
+
+        Returns:
+            float | int: The numerical movement cost value.
+        """
         if zone.zone_type == "priority":
             return 0.8
         if zone.zone_type == "normal":
             return 1
         if zone.zone_type == "restricted":
             return 2
+        return 1
 
     def find_path(self, start: Zone, end: Zone,
                   penalties: dict[str, float]) -> Optional[List[Zone]]:
         """
-        Find shortest path from start to end using Dijkstra.
-        Returns list of zones from start to end, or None if no path exists.
+        Finds the single cheapest path from a start zone to an end zone.
+
+        It looks at both the base zone type costs and any added congestion
+        penalties to safely steer drones away from heavily busy areas.
+
+        Args:
+            start (Zone): The starting location.
+            end (Zone): The target destination.
+            penalties (dict[str, float]): Current congestion penalties for
+            each zone name.
+
+        Returns:
+            Optional[List[Zone]]: A list of sequential Zone objects, or None
+            if blocked.
         """
         distances: dict[str, float] = {
             zone_name: float("inf")
@@ -64,7 +93,19 @@ class PathFinder:
         came_from: dict[str, str],
         end: Zone
     ) -> List[Zone]:
-        """Rebuild path from came_from dict"""
+        """
+        Traces back through the navigation history map to assemble
+        the final route.
+
+        Args:
+            came_from (dict[str, str]): A tracking map of which zone
+            led to which.
+            end (Zone): The final destination zone.
+
+        Returns:
+            List[Zone]: The reconstructed path ordered from start to end
+            destination.
+        """
         path = []
         current_name = end.name
         while current_name in came_from:

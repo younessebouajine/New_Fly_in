@@ -1,14 +1,11 @@
-# Easy Level 1: Simple linear path
 nb_drones : 2
 
-start_hub: start 0 0 [color=green]
-hub: waypoint1 1 0 [color=blue]
-hub: waypoint2 2 0 [color=blue]
-end_hub: goal 3 0 [color=red]
+start_hub: A 0 0
+hub: B 1 0 [color=cyan]
+hub: C 0 1 [zone=restricted color=orange]
+end_hub: D 1 1 [color=red]
 
-connection: start-waypoint1
-connection: waypoint1-waypoint2
-connection: waypoint2-goal
-
-
-colors.py exceptions.py graph.py main.py models.py parser.py pathfinding.py resuirements.txt simulation.py
+connection: A - B
+connection: A - C
+connection: B - D
+connection: C - D

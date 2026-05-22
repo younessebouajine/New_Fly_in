@@ -4,9 +4,6 @@ from typing import Any
 from webcolors import name_to_hex
 
 
-DEFAULT_COLOR = "#AAAAAA"
-
-
 class Parser:
 
     nb_drones_re = re.compile(
@@ -15,12 +12,18 @@ class Parser:
     )
 
     zone_re = re.compile(
-        r"^(start_hub|end_hub|hub)\s*:\s*([^\s\-\[\]]+)\s+(-?\d+)\s+(-?\d+)\s*(?:\[\s*(.*?)\s*\])?\s*$",
+        r"^(start_hub|end_hub|hub)\s*:\s*"
+        r"([^\s\-\[\]]+)\s+"
+        r"(-?\d+)\s+"
+        r"(-?\d+)\s*"
+        r"(?:\[\s*(.*?)\s*\])?\s*$",
         re.IGNORECASE
     )
 
     connection_re = re.compile(
-        r"^connection\s*:\s*([^\s\-\[\]]+)\s*-\s*([^\s\-\[\]]+)\s*(?:\[\s*(.*?)\s*\])?\s*$",
+        r"^connection\s*:\s*"
+        r"([^\s\-\[\]]+)\s*-\s*"
+        r"([^\s\-\[\]]+)\s*(?:\[\s*(.*?)\s*\])?\s*$",
         re.IGNORECASE
     )
 
@@ -30,12 +33,12 @@ class Parser:
     )
 
     def __init__(self) -> None:
-        self.nb_drones = None
-        self.zones = {}
-        self.connections = []
-        self.start_zone = None
-        self.end_zone = None
-        self.seen_edges = set()
+        self.nb_drones: int | None = None
+        self.zones: dict[str, dict] = {}
+        self.connections: list[tuple[str, str, dict]] = []
+        self.start_zone: str | None = None
+        self.end_zone: str | None = None
+        self.seen_edges: set[tuple[str, str]] = set()
 
     def parse(self, file_path: str):
         has_content = False
@@ -65,13 +68,13 @@ class Parser:
                 "nb_drones must be defined first"
             )
 
-        if lower_line.startswith("nb_drones:"):
+        if lower_line.startswith("nb_drones"):
             self.parse_nb_drones(line, nu_line)
-        elif lower_line.startswith("start_hub:") or \
-                lower_line.startswith("hub:") or \
-                lower_line.startswith("end_hub:"):
+        elif lower_line.startswith("start_hub") or \
+                lower_line.startswith("hub") or \
+                lower_line.startswith("end_hub"):
             self.parse_zone_line(line, nu_line)
-        elif lower_line.startswith("connection:"):
+        elif lower_line.startswith("connection"):
             self.parse_connection_line(line, nu_line)
         else:
             raise ParseError(f"Error on line {nu_line}: unknown line format")
@@ -112,7 +115,7 @@ class Parser:
         """
 
         if (color is None or color.lower() == "none"):
-            return DEFAULT_COLOR
+            return "#AAAAAA"
 
         color = color.strip()
 
@@ -184,7 +187,7 @@ class Parser:
             )
 
         if typezone in ("start_hub", "end_hub"):
-            if max_drones > self.nb_drones or max_drones < self.nb_drones:
+            if max_drones != self.nb_drones:
                 max_drones = self.nb_drones
 
         if name in self.zones:

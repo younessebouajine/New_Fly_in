@@ -5,33 +5,39 @@ from graph import build_graph
 from simulation import Simulation
 
 
-def main() -> None:
+class Main:
     """
-    Main entry point of the project.
+    Main application class.
     """
 
-    # Map file path
-    file_path = "file.txt"
-    # Parse map file
-    parser = Parser()
+    def __init__(self, file_path: str = "file.txt") -> None:
+        self.file_path = file_path
+        self.parser = Parser()
 
-    parser.parse(file_path)
+    def run(self) -> None:
+        """
+        Run the application.
+        """
 
-    data = parser.build_map_data()
+        # Parse map file
+        self.parser.parse(self.file_path)
 
-    # Build graph objects
-    map_data = build_graph(data)
+        data = self.parser.build_map_data()
 
-    # Create simulation
-    simulation = Simulation(map_data)
+        # Build graph objects
+        map_data = build_graph(data)
 
-    # Run simulation
-    simulation.run()
+        # Create simulation
+        simulation = Simulation(map_data)
+
+        # Run simulation
+        simulation.run()
 
 
 if __name__ == "__main__":
     try:
-        main()
+        app = Main()
+        app.run()
 
-    except (BaseException, KeyboardInterrupt, FileNotFoundError) as error:
+    except (KeyboardInterrupt, FileNotFoundError, Exception) as error:
         print(f"\nERROR: {error}\n")
